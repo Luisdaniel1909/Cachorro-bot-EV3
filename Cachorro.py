@@ -1,7 +1,11 @@
 #!/usr/bin/env pybricks-micropython
 
+# La biblioteca urandom nos permite generar números aleatorios, o pseudoaleatorios. 
+# Permite el acceso al ruido ambiental recogido de dispositivos y otras fuentes
 import urandom
 
+
+#importar modulos de proposito general
 from pybricks.hubs import EV3Brick
 from pybricks.ev3devices import Motor, ColorSensor, TouchSensor
 from pybricks.parameters import Port, Button, Color, Direction
@@ -11,24 +15,24 @@ from pybricks.tools import wait, StopWatch
 
 class Puppy:
     # Estas constantes se utilizan para posicionar las piernas.
-    HALF_UP_ANGLE = 25
-    STAND_UP_ANGLE = 65
-    STRETCH_ANGLE = 125
+    ANGULO_MEDIO_SUPERIOR = 25
+    ANGULO_DE_PIE = 65
+    ANGULO_DE_ESTIRAMIENTO = 125
 
     # Estas constantes son para posicionar la cabeza.
-    HEAD_UP_ANGLE = 0
-    HEAD_DOWN_ANGLE = -40
+    ANGULO_DE_CABEZA_ARRIBA = 0
+    ANGULO_CABEZA_ABAJO = 0
 
     # Estas constantes son para los ojos.
-    NEUTRAL_EYES = Image(ImageFile.NEUTRAL)
-    TIRED_EYES = Image(ImageFile.TIRED_MIDDLE)
-    TIRED_LEFT_EYES = Image(ImageFile.TIRED_LEFT)
-    TIRED_RIGHT_EYES = Image(ImageFile.TIRED_RIGHT)
-    SLEEPING_EYES = Image(ImageFile.SLEEPING)
-    HURT_EYES = Image(ImageFile.HURT)
-    ANGRY_EYES = Image(ImageFile.ANGRY)
-    HEART_EYES = Image(ImageFile.LOVE)
-    SQUINTY_EYES = Image(ImageFile.TEAR)  # la lágrima se borra después
+    OJOS_NEUTRALES = Image(ImageFile.NEUTRAL)
+    OJOS_CANSADOS = Image(ImageFile.TIRED_MIDDLE)
+    OJO_IZQUIERDO_CANSADO = Image(ImageFile.TIRED_LEFT)
+    OJO_DERECHO_CANSADO = Image(ImageFile.TIRED_RIGHT)
+    OJOS_DURMIENDO = Image(ImageFile.SLEEPING)
+    OJOS_HERIDOS = Image(ImageFile.HURT)
+    OJOS_ENOJADOS = Image(ImageFile.ANGRY)
+    OJOS_CORAZON = Image(ImageFile.LOVE)
+    OJOS_BIZCOS = Image(ImageFile.TEAR)  # la lágrima se borra después
 
     def __init__(self):
         # Inicializar el ladrillo EV3.
@@ -54,15 +58,15 @@ class Puppy:
         #Inicializa el sensor táctil. Se utiliza para detectar cuando alguien acaricia al cachorro.
         self.touch_sensor = TouchSensor(Port.S1)
 
-        self.pet_count_timer = StopWatch()
-        self.feed_count_timer = StopWatch()
+        self.acaricia_count_timer = StopWatch()
+        self.alimentar_count_timer = StopWatch()
         self.count_changed_timer = StopWatch()
 
         # Estos atributos se inicializan más tarde en el método reset().
-        self.pet_target = None
-        self.feed_target = None
-        self.pet_count = None
-        self.feed_count = None
+        self.acaricia_target = None
+        self.alimentar_target = None
+        self.acaricia_count = None
+        self.alimentar_count = None
 
         # Estos atributos son utilizados por las propiedades.
         self._behavior = None
@@ -124,14 +128,14 @@ class Puppy:
         self.left_leg_motor.reset_angle(0)
         self.right_leg_motor.reset_angle(0)
         # Elige un número aleatorio de tiempo para acariciar al cachorro.
-        self.pet_target = urandom.randint(3, 6)
+        self.acaricia_target = urandom.randint(3, 6)
         # Elige un número aleatorio de tiempo para alimentar al cachorro.
-        self.feed_target = urandom.randint(2, 4)
+        self.alimentar_target = urandom.randint(2, 4)
         # El recuento de caricias y el recuento de alimentos comienzan en 1
-        self.pet_count, self.feed_count = 1, 1
+        self.acaricia_count, self.alimentar_count = 1, 1
         # Reinicia los temporizadores.
-        self.pet_count_timer.reset()
-        self.feed_count_timer.reset()
+        self.acaricia_count_timer.reset()
+        self.alimentar_count_timer.reset()
         self.count_changed_timer.reset()
         # Establece el comportamiento inicial.
         self.behavior = self.idle
@@ -145,17 +149,17 @@ class Puppy:
             self.stand_up()
         self.update_eyes()
         self.update_behavior()
-        self.update_pet_count()
-        self.update_feed_count()
+        self.update_acaricia_count()
+        self.update_alimentar_count()
 
     def go_to_sleep(self):
         """Hace que el cachorro se duerma."""
         if self.did_behavior_change:
             print('go_to_sleep')
-            self.eyes = self.TIRED_EYES
-            self.sit_down()
-            self.move_head(self.HEAD_DOWN_ANGLE)
-            self.eyes = self.SLEEPING_EYES
+            self.eyes = self.OJOS_CANSADOS
+            self.sentarse()
+            self.move_head(self.ANGULO_CABEZA_ABAJO)
+            self.eyes = self.OJOS_DURMIENDO
             self.ev3.speaker.play_file(SoundFile.SNORING)
         if self.touch_sensor.pressed() and Button.CENTER in self.ev3.buttons.pressed():
             self.count_changed_timer.reset()
@@ -165,10 +169,10 @@ class Puppy:
         """Hace que el cachorro se despierte."""
         if self.did_behavior_change:
             print('wake_up')
-        self.eyes = self.TIRED_EYES
+        self.eyes = self.OJOS_CANSADOS
         self.ev3.speaker.play_file(SoundFile.DOG_WHINE)
-        self.move_head(self.HEAD_UP_ANGLE)
-        self.sit_down()
+        self.move_head(self.ANGULO_DE_CABEZA_ARRIBA)
+        self.sentarse()
         self.stretch()
         wait(1000)
         self.stand_up()
@@ -178,11 +182,11 @@ class Puppy:
         """Hace que el cachorro actue de forma juguetona."""
         if self.did_behavior_change:
             print('act_playful')
-            self.eyes = self.NEUTRAL_EYES
+            self.eyes = self.OJOS_NEUTRALES
             self.stand_up()
             self.playful_bark_interval = 0
 
-        if self.update_pet_count():
+        if self.update_acaricia_count():
             # Si el cachorro fue acariciado, entonces hemos terminado de ser juguetones
             self.behavior = self.idle
 
@@ -191,65 +195,65 @@ class Puppy:
             self.playful_timer.reset()
             self.playful_bark_interval = urandom.randint(4, 8) * 1000
 
-    def act_angry(self):
+    def act_enojado(self):
         """Hace que el cachorro se enfade."""
         if self.did_behavior_change:
-            print('act_angry')
-        self.eyes = self.ANGRY_EYES
+            print('act_enojado')
+        self.eyes = self.OJOS_ENOJADOS
         self.ev3.speaker.play_file(SoundFile.DOG_GROWL)
         self.stand_up()
         wait(1500)
         self.ev3.speaker.play_file(SoundFile.DOG_BARK_1)
-        self.pet_count -= 1
-        print('pet_count:', self.pet_count, 'pet_target:', self.pet_target)
+        self.acaricia_count -= 1
+        print('acaricia_count:', self.acaricia_count, 'acaricia_target:', self.acaricia_target)
         self.behavior = self.idle
 
-    def act_hungry(self):
+    def act_hambriento(self):
         if self.did_behavior_change:
-            print('act_hungry')
-            self.eyes = self.HURT_EYES
-            self.sit_down()
+            print('act_hambriento')
+            self.eyes = self.OJOS_HERIDOS
+            self.sentarse()
             self.ev3.speaker.play_file(SoundFile.DOG_WHINE)
 
-        if self.update_feed_count():
+        if self.update_alimentar_count():
             # Si tenemos comida, entonces ya no tenemos hambre.
             self.behavior = self.idle
 
-        if self.update_pet_count():
-            # Si nos dan una mascota en vez de comida, entonces nos enfadamos.
-            self.behavior = self.act_angry
+        if self.update_acaricia_count():
+            # Si nos dan una caricia en vez de comida, entonces nos enfadamos.
+            self.behavior = self.act_enojado
 
-    def go_to_bathroom(self):
+    def ir_al_baño(self):
         if self.did_behavior_change:
-            print('go_to_bathroom')
-        self.eyes = self.SQUINTY_EYES
+            print('ir_al_baño')
+        self.eyes = self.OJOS_BIZCOS
         self.stand_up()
         wait(100)
-        self.right_leg_motor.run_target(100, self.STRETCH_ANGLE)
+        self.right_leg_motor.run_target(100, self.ANGULO_DE_ESTIRAMIENTO)
         wait(800)
         self.ev3.speaker.play_file(SoundFile.HORN_1)
         wait(1000)
         for _ in range(3):
             self.right_leg_motor.run_angle(100, 20)
             self.right_leg_motor.run_angle(100, -20)
-        self.right_leg_motor.run_target(100, self.STAND_UP_ANGLE)
-        self.feed_count = 1
+        self.right_leg_motor.run_target(100, self.ANGULO_DE_PIE)
+        self.alimentar_count = 1
         self.behavior = self.idle
 
-    def act_happy(self):
+    def act_feliz(self):
         if self.did_behavior_change:
-            print('act_happy')
-        self.eyes = self.HEART_EYES
+            print('act_feliz')
+        self.eyes = self.OJOS_CORAZON
         # self.move_head(self.?)
-        self.sit_down()
+        self.sentarse()
         for _ in range(3):
             self.ev3.speaker.play_file(SoundFile.DOG_BARK_1)
             self.hop()
         wait(500)
-        self.sit_down()
+        self.sentarse()
         self.reset()
 
-    def sit_down(self):
+    def sentarse(self):
         """Hace que el cachorro se siente."""
         self.left_leg_motor.run(-50)
         self.right_leg_motor.run(-50)
@@ -263,13 +267,13 @@ class Puppy:
 
     def stand_up(self):
         """Hace que el cachorro se ponga de pie."""
-        self.left_leg_motor.run_target(100, self.HALF_UP_ANGLE, wait=False)
-        self.right_leg_motor.run_target(100, self.HALF_UP_ANGLE)
+        self.left_leg_motor.run_target(100, self.ANGULO_MEDIO_SUPERIOR, wait=False)
+        self.right_leg_motor.run_target(100, self.ANGULO_MEDIO_SUPERIOR)
         while not self.left_leg_motor.control.done():
             wait(100)
 
-        self.left_leg_motor.run_target(50, self.STAND_UP_ANGLE, wait=False)
-        self.right_leg_motor.run_target(50, self.STAND_UP_ANGLE)
+        self.left_leg_motor.run_target(50, self.ANGULO_DE_PIE, wait=False)
+        self.right_leg_motor.run_target(50, self.ANGULO_DE_PIE)
         while not self.left_leg_motor.control.done():
             wait(100)
 
@@ -279,15 +283,15 @@ class Puppy:
         """Hace que el cachorro estire las patas hacia atrás."""
         self.stand_up()
 
-        self.left_leg_motor.run_target(100, self.STRETCH_ANGLE, wait=False)
-        self.right_leg_motor.run_target(100, self.STRETCH_ANGLE)
+        self.left_leg_motor.run_target(100, self.ANGULO_DE_ESTIRAMIENTO, wait=False)
+        self.right_leg_motor.run_target(100, self.ANGULO_DE_ESTIRAMIENTO)
         while not self.left_leg_motor.control.done():
             wait(100)
 
         self.ev3.speaker.play_file(SoundFile.DOG_WHINE)
 
-        self.left_leg_motor.run_target(100, self.STAND_UP_ANGLE, wait=False)
-        self.right_leg_motor.run_target(100, self.STAND_UP_ANGLE)
+        self.left_leg_motor.run_target(100, self.ANGULO_DE_PIE, wait=False)
+        self.right_leg_motor.run_target(100, self.ANGULO_DE_PIE)
         while not self.left_leg_motor.control.done():
             wait(100)
 
@@ -330,21 +334,21 @@ class Puppy:
         """Actualiza la propiedad :prop:`behavior` basándose en el estado actual
         de acariciar y alimentar.
         """
-        if self.pet_count == self.pet_target and self.feed_count == self.feed_target:
+        if self.acaricia_count == self.acaricia_target and self.alimentar_count == self.alimentar_target:
             # Si tenemos la cantidad exacta de caricias y alimentos, actuar feliz.
-            self.behavior = self.act_happy
-        elif self.pet_count > self.pet_target and self.feed_count < self.feed_target:
+            self.behavior = self.act_feliz
+        elif self.acaricia_count > self.acaricia_target and self.alimentar_count < self.alimentar_target:
             # Si tenemos demasiadas caricias y poca comida, actúa con rabia.
-            self.behavior = self.act_angry
-        elif self.pet_count < self.pet_target and self.feed_count > self.feed_target:
-            # Si no tenemos suficientes caricias y demasiada comida, vamos al baño.
-            self.behavior = self.go_to_bathroom
-        elif self.pet_count == 0 and self.feed_count > 0:
+            self.behavior = self.act_enojado
+        elif self.acaricia_count < self.acaricia_target and self.alimentar_count > self.alimentar_target:
+            # Si no tenemos suficientes caricias y tenemos demasiada comida, vamos al baño.
+            self.behavior = self.ir_al_baño
+        elif self.acaricia_count == 0 and self.alimentar_count > 0:
             # Si no tenemos caricias y algo de comida, actúa juguetón.
             self.behavior = self.act_playful
-        elif self.feed_count == 0:
+        elif self.alimentar_count == 0:
             # Si no tenemos comida, actúa con hambre.
-            self.behavior = self.act_hungry
+            self.behavior = self.act_hambriento
 
     @property
     def eyes(self):
@@ -360,24 +364,24 @@ class Puppy:
     def update_eyes(self):
         if self.eyes_timer_1.time() > self.eyes_timer_1_end:
             self.eyes_timer_1.reset()
-            if self.eyes == self.SLEEPING_EYES:
+            if self.eyes == self.OJOS_DURMIENDO:
                 self.eyes_timer_1_end = urandom.randint(1, 5) * 1000
-                self.eyes = self.TIRED_RIGHT_EYES
+                self.eyes = self.OJO_DERECHO_CANSADO
             else:
                 self.eyes_timer_1_end = 250
-                self.eyes = self.SLEEPING_EYES
+                self.eyes = self.OJOS_DURMIENDO
 
         if self.eyes_timer_2.time() > self.eyes_timer_2_end:
             self.eyes_timer_2.reset()
-            if self.eyes != self.SLEEPING_EYES:
+            if self.eyes != self.OJOS_DURMIENDO:
                 self.eyes_timer_2_end = urandom.randint(1, 10) * 1000
-                if self.eyes != self.TIRED_LEFT_EYES:
-                    self.eyes = self.TIRED_LEFT_EYES
+                if self.eyes != self.OJO_IZQUIERDO_CANSADO:
+                    self.eyes = self.OJO_IZQUIERDO_CANSADO
                 else:
-                    self.eyes = self.TIRED_RIGHT_EYES
+                    self.eyes = self.OJO_DERECHO_CANSADO
 
-    def update_pet_count(self):
-        """Actualiza el atributo :attr:`pet_count` si el cachorro está siendo
+    def update_acaricia_count(self):
+        """Actualiza el atributo :attr:`acaricia_count` si el cachorro está siendo
         acariciado (sensor táctil pulsado).
 
         Devuelve:
@@ -389,19 +393,19 @@ class Puppy:
 
         petted = self.touch_sensor.pressed()
         if petted and petted != self.prev_petted:
-            self.pet_count += 1
-            print('pet_count:', self.pet_count, 'pet_target:', self.pet_target)
+            self.acaricia_count += 1
+            print('acaricia_count:', self.acaricia_count, 'acaricia_target:', self.acaricia_target)
             self.count_changed_timer.reset()
-            if not self.behavior == self.act_hungry:
-                self.eyes = self.SQUINTY_EYES
+            if not self.behavior == self.act_hambriento:
+                self.eyes = self.OJOS_BIZCOS
                 self.ev3.speaker.play_file(SoundFile.DOG_SNIFF)
             changed = True
 
         self.prev_petted = petted
         return changed
 
-    def update_feed_count(self):
-        """Actualiza el atributo :attr:`feed_count` si el cachorro está siendo
+    def update_alimentar_count(self):
+        """Actualiza el atributo :attr:`alimentar_count` si el cachorro está siendo
         alimentado (el sensor de color detecta un color).
 
         Devuelve:
@@ -413,26 +417,26 @@ class Puppy:
         changed = False
 
         if color is not None and color != Color.BLACK and color != self.prev_color:
-            self.feed_count += 1
-            print('feed_count:', self.feed_count, 'feed_target:', self.feed_target)
+            self.alimentar_count += 1
+            print('alimentar_count:', self.alimentar_count, 'alimentar_target:', self.alimentar_target)
             changed = True
             self.count_changed_timer.reset()
             self.prev_color = color
-            self.eyes = self.SQUINTY_EYES
+            self.eyes = self.OJOS_BIZCOS
             self.ev3.speaker.play_file(SoundFile.CRUNCHING)
 
         return changed
 
     def monitor_counts(self):
         """Supervisa los recuentos de caricias y alimentos y los reduce con el tiempo"""
-        if self.pet_count_timer.time() > 15000:
-            self.pet_count_timer.reset()
-            self.pet_count = max(0, self.pet_count - 1)
-            print('pet_count:', self.pet_count, 'pet_target:', self.pet_target)
-        if self.feed_count_timer.time() > 15000:
-            self.feed_count_timer.reset()
-            self.feed_count = max(0, self.feed_count - 1)
-            print('feed_count:', self.feed_count, 'feed_target:', self.feed_target)
+        if self.acaricia_count_timer.time() > 15000:
+            self.acaricia_count_timer.reset()
+            self.acaricia_count = max(0, self.acaricia_count - 1)
+            print('acaricia_count:', self.acaricia_count, 'acaricia_target:', self.acaricia_target)
+        if self.alimentar_count_timer.time() > 15000:
+            self.alimentar_count_timer.reset()
+            self.alimentar_count = max(0, self.alimentar_count - 1)
+            print('alimentar_count:', self.alimentar_count, 'alimentar_target:', self.alimentar_target)
         if self.count_changed_timer.time() > 30000:
             # Si no ha pasado nada durante 30 segundos, ir a dormir
             self.count_changed_timer.reset()
@@ -440,9 +444,9 @@ class Puppy:
 
     def run(self):
         """Este es el bucle de ejecución del programa principal."""
-        self.sit_down()
+        self.sentarse()
         self.adjust_head()
-        self.eyes = self.SLEEPING_EYES
+        self.eyes = self.OJOS_DURMIENDO
         self.reset()
         while True:
             self.monitor_counts()
@@ -451,7 +455,7 @@ class Puppy:
 
 
 # Esto cubre la lágrima para hacer una nueva imagen.
-Puppy.SQUINTY_EYES.draw_box(120, 60, 140, 85, fill=True, color=Color.WHITE)
+Puppy.OJOS_BIZCOS.draw_box(120, 60, 140, 85, fill=True, color=Color.WHITE)
 
 
 if __name__ == '__main__':
